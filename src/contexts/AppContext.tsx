@@ -1,24 +1,66 @@
-// src/contexts/AppContext.js
-import React, { createContext, useContext, useReducer } from 'react';
+// src/contexts/AppContext.tsx
+import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 
-// Initial state
-const initialState = {
+interface Pet {
+  id: string;
+  name: string;
+  type: string;
+  breed?: string;
+  color?: string;
+  features?: string[];
+}
+
+interface User {
+  id: string;
+  name: string;
+  familyMembers?: string[];
+}
+
+interface Photo {
+  uri: string;
+  base64?: string;
+  width?: number;
+  height?: number;
+}
+
+interface AppState {
+  user: User | null;
+  pets: Pet[];
+  currentPhoto: Photo | null;
+  currentThought: string | null;
+}
+
+type AppContextType = {
+  state: AppState;
+  actions: {
+    setUser: (user: User) => void;
+    addPet: (pet: Pet) => void;
+    setCurrentPhoto: (photo: Photo) => void;
+    setCurrentThought: (thought: string) => void;
+  };
+};
+
+const initialState: AppState = {
   user: null,
   pets: [],
   currentPhoto: null,
   currentThought: null,
 };
 
-// Action types
-const ActionTypes = {
-  SET_USER: 'SET_USER',
-  ADD_PET: 'ADD_PET',
-  SET_CURRENT_PHOTO: 'SET_CURRENT_PHOTO',
-  SET_CURRENT_THOUGHT: 'SET_CURRENT_THOUGHT',
-};
+enum ActionTypes {
+  SET_USER = 'SET_USER',
+  ADD_PET = 'ADD_PET',
+  SET_CURRENT_PHOTO = 'SET_CURRENT_PHOTO',
+  SET_CURRENT_THOUGHT = 'SET_CURRENT_THOUGHT',
+}
 
-// Reducer
-function appReducer(state, action) {
+type Action =
+  | { type: ActionTypes.SET_USER; payload: User }
+  | { type: ActionTypes.ADD_PET; payload: Pet }
+  | { type: ActionTypes.SET_CURRENT_PHOTO; payload: Photo }
+  | { type: ActionTypes.SET_CURRENT_THOUGHT; payload: string };
+
+function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case ActionTypes.SET_USER:
       return {
@@ -45,27 +87,37 @@ function appReducer(state, action) {
   }
 }
 
-// Create context
-const AppContext = createContext();
+// Create context with initial undefined value
+const AppContext = createContext<AppContextType>({
+  state: initialState,
+  actions: {
+    setUser: () => {},
+    addPet: () => {},
+    setCurrentPhoto: () => {},
+    setCurrentThought: () => {},
+  },
+});
 
-// Context provider component
-export function AppProvider({ children }) {
+interface AppProviderProps {
+  children: ReactNode;
+}
+
+export function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Actions
-  const setUser = (user) => {
+  const setUser = (user: User) => {
     dispatch({ type: ActionTypes.SET_USER, payload: user });
   };
 
-  const addPet = (pet) => {
+  const addPet = (pet: Pet) => {
     dispatch({ type: ActionTypes.ADD_PET, payload: pet });
   };
 
-  const setCurrentPhoto = (photo) => {
+  const setCurrentPhoto = (photo: Photo) => {
     dispatch({ type: ActionTypes.SET_CURRENT_PHOTO, payload: photo });
   };
 
-  const setCurrentThought = (thought) => {
+  const setCurrentThought = (thought: string) => {
     dispatch({ type: ActionTypes.SET_CURRENT_THOUGHT, payload: thought });
   };
 
@@ -82,10 +134,9 @@ export function AppProvider({ children }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-// Custom hook for using the context
-export function useApp() {
+export function useApp(): AppContextType {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;
