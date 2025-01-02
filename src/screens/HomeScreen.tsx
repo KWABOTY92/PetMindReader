@@ -1,10 +1,9 @@
-// src/screens/HomeScreen.tsx
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../contexts/AppContext';
 import { launchCamera } from 'react-native-image-picker';
-import type { RootStackParamList } from '../../App';
+import type { RootStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
