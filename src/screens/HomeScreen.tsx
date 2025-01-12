@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,7 +9,7 @@ import type { RootStackParamList } from '../types/navigation';
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 function HomeScreen({navigation}: Props): JSX.Element {
-  const { state, actions } = useApp();
+  const { actions } = useApp();
 
   const handleTakePhoto = async () => {
     try {
@@ -18,11 +19,21 @@ function HomeScreen({navigation}: Props): JSX.Element {
       });
 
       if (result.assets && result.assets[0]) {
-        actions.setCurrentPhoto({
+        const photo = {
           uri: result.assets[0].uri || '',
           base64: result.assets[0].base64,
           width: result.assets[0].width,
           height: result.assets[0].height,
+        };
+        
+        actions.setCurrentPhoto(photo);
+        
+        // Navigate to PhotoResult screen
+        navigation.navigate('PhotoResult', {
+          photoUri: photo.uri,
+          base64: photo.base64,
+          width: photo.width,
+          height: photo.height,
         });
       }
     } catch (error) {
@@ -34,9 +45,6 @@ function HomeScreen({navigation}: Props): JSX.Element {
     <View style={styles.container}>
       <Text style={styles.title}>Pet Thoughts App</Text>
       <Button title="Take Photo" onPress={handleTakePhoto} />
-      {state.currentPhoto && (
-        <Text>Photo taken! Path: {state.currentPhoto.uri}</Text>
-      )}
     </View>
   );
 }
