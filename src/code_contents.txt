@@ -1,6 +1,6 @@
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\file-scanner.py
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\file-scanner.py
 ================================================================================
 
 import os
@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\components\LoadingScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\components\LoadingScreen.tsx
 ================================================================================
 
 // src/components/LoadingScreen.tsx
@@ -91,14 +91,15 @@ const styles = StyleSheet.create({
 export default LoadingScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\contexts\AppContext.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\contexts\AppContext.tsx
 ================================================================================
 
 // src/contexts/AppContext.tsx
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface Pet {
+// Types
+export interface Pet {
   id: string;
   name: string;
   type: string;
@@ -137,11 +138,13 @@ type AppContextType = {
     setUser: (user: User) => void;
     addPet: (pet: Pet) => void;
     updatePet: (pet: Pet) => void;
+    deletePet: (petId: string) => void;
     setCurrentPhoto: (photo: Photo) => void;
     setCurrentThought: (thought: string) => void;
   };
 };
 
+// Initial State & Storage Keys
 const initialState: AppState = {
   user: null,
   pets: [],
@@ -154,10 +157,12 @@ const STORAGE_KEYS = {
   PETS: '@pet_thoughts_pets',
 };
 
+// Action Types
 enum ActionTypes {
   SET_USER = 'SET_USER',
   ADD_PET = 'ADD_PET',
   UPDATE_PET = 'UPDATE_PET',
+  DELETE_PET = 'DELETE_PET',
   SET_CURRENT_PHOTO = 'SET_CURRENT_PHOTO',
   SET_CURRENT_THOUGHT = 'SET_CURRENT_THOUGHT',
 }
@@ -166,102 +171,129 @@ type Action =
   | { type: ActionTypes.SET_USER; payload: User }
   | { type: ActionTypes.ADD_PET; payload: Pet }
   | { type: ActionTypes.UPDATE_PET; payload: Pet }
+  | { type: ActionTypes.DELETE_PET; payload: string }
   | { type: ActionTypes.SET_CURRENT_PHOTO; payload: Photo }
   | { type: ActionTypes.SET_CURRENT_THOUGHT; payload: string };
 
-  function appReducer(state: AppState, action: Action): AppState {
-    let newState: AppState;
-    
-    switch (action.type) {
-      case ActionTypes.SET_USER:
-        newState = {
-          ...state,
-          user: action.payload,
-        };
-        // Save user to AsyncStorage
-        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(action.payload));
-        return newState;
-  
-      case ActionTypes.ADD_PET:
-        newState = {
-          ...state,
-          pets: [...state.pets, action.payload],
-        };
-        // Save updated pets list to AsyncStorage
-        AsyncStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(newState.pets));
-        return newState;
-  
-      case ActionTypes.UPDATE_PET:
-        newState = {
-          ...state,
-          pets: state.pets.map(pet =>
-            pet.id === action.payload.id ? action.payload : pet
-          ),
-        };
-        // Save updated pets list to AsyncStorage
-        AsyncStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(newState.pets));
-        return newState;
-  
-      case ActionTypes.SET_CURRENT_PHOTO:
-        return {
-          ...state,
-          currentPhoto: action.payload,
-        };
-  
-      case ActionTypes.SET_CURRENT_THOUGHT:
-        return {
-          ...state,
-          currentThought: action.payload,
-        };
-  
-      default:
-        return state;
-    }
-  }
-  
+const initializeState = async (): Promise<AppState> => {
+  try {
+    const [userData, petsData] = await Promise.all([
+      AsyncStorage.getItem(STORAGE_KEYS.USER),
+      AsyncStorage.getItem(STORAGE_KEYS.PETS),
+    ]);
 
+    return {
+      ...initialState,
+      user: userData ? JSON.parse(userData) : null,
+      pets: petsData ? JSON.parse(petsData) : [],
+    };
+  } catch (error) {
+    console.error('Error loading initial state:', error);
+    return initialState;
+  }
+};
+
+// Reducer
+function appReducer(state: AppState, action: Action): AppState {
+  let newState: AppState;
+
+  switch (action.type) {
+    case ActionTypes.SET_USER:
+      newState = {
+        ...state,
+        user: action.payload,
+      };
+      AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(action.payload));
+      return newState;
+
+    case ActionTypes.ADD_PET:
+      console.log('ADD_PET action received:', action.payload);
+      console.log('Current pets:', state.pets);
+      newState = {
+        ...state,
+        pets: [...state.pets, action.payload],
+      };
+      console.log('New pets array:', newState.pets);
+      AsyncStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(newState.pets));
+      return newState;
+
+    case ActionTypes.UPDATE_PET:
+      newState = {
+        ...state,
+        pets: state.pets.map(pet =>
+          pet.id === action.payload.id ? action.payload : pet
+        ),
+      };
+      AsyncStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(newState.pets));
+      return newState;
+
+    case ActionTypes.DELETE_PET:
+      newState = {
+        ...state,
+        pets: state.pets.filter(pet => pet.id !== action.payload),
+      };
+      AsyncStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(newState.pets));
+      return newState;
+
+    case ActionTypes.SET_CURRENT_PHOTO:
+      return {
+        ...state,
+        currentPhoto: action.payload,
+      };
+
+    case ActionTypes.SET_CURRENT_THOUGHT:
+      return {
+        ...state,
+        currentThought: action.payload,
+      };
+
+    default:
+      return state;
+  }
+}
+
+// Context
 const AppContext = createContext<AppContextType>({
   state: initialState,
   actions: {
     setUser: () => {},
     addPet: () => {},
     updatePet: () => {},
+    deletePet: () => {},
     setCurrentPhoto: () => {},
     setCurrentThought: () => {},
   },
 });
 
+// Provider Component
 interface AppProviderProps {
   children: ReactNode;
 }
 
 export function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved data when the app starts
   useEffect(() => {
-    const loadSavedData = async () => {
-      try {
-        // Load user data
-        const savedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        if (savedUser) {
-          dispatch({ type: ActionTypes.SET_USER, payload: JSON.parse(savedUser) });
-        }
-
-        // Load pets data
-        const savedPets = await AsyncStorage.getItem(STORAGE_KEYS.PETS);
-        if (savedPets) {
-          JSON.parse(savedPets).forEach((pet: Pet) => {
-            dispatch({ type: ActionTypes.ADD_PET, payload: pet });
-          });
-        }
-      } catch (error) {
-        console.error('Error loading saved data:', error);
+    const loadInitialState = async () => {
+      const initializedState = await initializeState();
+      if (initializedState.user) {
+        dispatch({ type: ActionTypes.SET_USER, payload: initializedState.user });
       }
+      if (initializedState.pets.length > 0) {
+        initializedState.pets.forEach(pet => {
+          dispatch({ type: ActionTypes.ADD_PET, payload: pet });
+        });
+      }
+      setIsLoading(false);
     };
 
-    loadSavedData();
+    loadInitialState();
   }, []);
+
+  if (isLoading) {
+    return null; // or return a loading component
+  }
 
   const setUser = (user: User) => {
     dispatch({ type: ActionTypes.SET_USER, payload: user });
@@ -273,6 +305,10 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const updatePet = (pet: Pet) => {
     dispatch({ type: ActionTypes.UPDATE_PET, payload: pet });
+  };
+
+  const deletePet = (petId: string) => {
+    dispatch({ type: ActionTypes.DELETE_PET, payload: petId });
   };
 
   const setCurrentPhoto = (photo: Photo) => {
@@ -289,6 +325,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setUser,
       addPet,
       updatePet,
+      deletePet,
       setCurrentPhoto,
       setCurrentThought,
     },
@@ -297,6 +334,7 @@ export function AppProvider({ children }: AppProviderProps) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
+// Hook
 export function useApp(): AppContextType {
   const context = useContext(AppContext);
   if (!context) {
@@ -306,25 +344,27 @@ export function useApp(): AppContextType {
 }
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\HomeScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\HomeScreen.tsx
 ================================================================================
 
 // src/screens/HomeScreen.tsx
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../contexts/AppContext';
-import { launchCamera } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import type { RootStackParamList } from '../types/navigation';
+import { Camera, Image as ImageIcon } from 'lucide-react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 function HomeScreen({navigation}: Props): JSX.Element {
   const { actions } = useApp();
 
-  const handleTakePhoto = async () => {
+  const handleImageSelection = async (type: 'camera' | 'gallery') => {
     try {
-      const result = await launchCamera({
+      const launch = type === 'camera' ? launchCamera : launchImageLibrary;
+      const result = await launch({
         mediaType: 'photo',
         includeBase64: true,
       });
@@ -339,8 +379,8 @@ function HomeScreen({navigation}: Props): JSX.Element {
         
         actions.setCurrentPhoto(photo);
         
-        // Navigate to PhotoResult screen
-        navigation.navigate('PhotoResult', {
+        // Navigate to PhotoPreview screen
+        navigation.navigate('PhotoPreview', {
           photoUri: photo.uri,
           base64: photo.base64,
           width: photo.width,
@@ -348,14 +388,41 @@ function HomeScreen({navigation}: Props): JSX.Element {
         });
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      console.error('Error selecting photo:', error);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pet Thoughts App</Text>
-      <Button title="Take Photo" onPress={handleTakePhoto} />
+      <Text style={styles.title}>Pet Thoughts</Text>
+      
+      <View style={styles.captureSection}>
+        <Text style={styles.sectionTitle}>Capture Magic</Text>
+        <View style={styles.captureButtons}>
+          <Pressable 
+            style={styles.captureButton}
+            onPress={() => handleImageSelection('camera')}
+          >
+            <Camera size={32} color="#fff" />
+            <Text style={styles.captureButtonText}>Take Photo</Text>
+          </Pressable>
+          
+          <Pressable 
+            style={styles.captureButton}
+            onPress={() => handleImageSelection('gallery')}
+          >
+            <ImageIcon size={32} color="#fff" />
+            <Text style={styles.captureButtonText}>Choose Photo</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <Pressable 
+        style={styles.worldButton}
+        onPress={() => navigation.navigate('YourPetsWorld')}
+      >
+        <Text style={styles.worldButtonText}>Enter Your Pet's World</Text>
+      </Pressable>
     </View>
   );
 }
@@ -363,20 +430,186 @@ function HomeScreen({navigation}: Props): JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
     padding: 20,
   },
   title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 60,
+    marginBottom: 40,
+    color: '#007AFF',
+  },
+  captureSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  sectionTitle: {
     fontSize: 24,
+    fontWeight: '600',
     marginBottom: 20,
+    color: '#333',
+  },
+  captureButtons: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  captureButton: {
+    backgroundColor: '#007AFF',
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    width: 150,
+    gap: 12,
+  },
+  captureButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  worldButton: {
+    backgroundColor: '#34C759',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  worldButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 
 export default HomeScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\PhotoResultScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\PhotoPreviewScreen.tsx
+================================================================================
+
+// src/screens/PhotoPreviewScreen.tsx
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Image,
+  StyleSheet,
+  Dimensions,
+  Pressable,
+  Text,
+} from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useApp } from '../contexts/AppContext';
+import type { RootStackParamList } from '../types/navigation';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'PhotoPreview'>;
+
+function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
+  const { photoUri, width, height } = route.params;
+  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    // Calculate image dimensions to fit screen while maintaining aspect ratio
+    if (width && height) {
+      const screenWidth = Dimensions.get('window').width;
+      const screenHeight = Dimensions.get('window').height;
+      const imageRatio = height / width;
+      const screenRatio = screenHeight / screenWidth;
+
+      if (imageRatio > screenRatio) {
+        const newHeight = screenHeight * 0.8;
+        setImageLayout({
+          height: newHeight,
+          width: newHeight / imageRatio,
+        });
+      } else {
+        const newWidth = screenWidth * 0.9;
+        setImageLayout({
+          width: newWidth,
+          height: newWidth * imageRatio,
+        });
+      }
+    }
+  }, [width, height]);
+
+  const handleRevealThoughts = () => {
+    navigation.navigate('PhotoResult', route.params);
+  };
+
+  const handleTryAgain = () => {
+    navigation.goBack();
+  };
+
+  return (
+    <View style={styles.container}>
+      <Image
+        source={{ uri: photoUri }}
+        style={[
+          styles.image,
+          {
+            width: imageLayout.width,
+            height: imageLayout.height,
+          },
+        ]}
+      />
+      <View style={styles.buttonContainer}>
+        <Pressable style={styles.button} onPress={handleRevealThoughts}>
+          <Text style={styles.buttonText}>Reveal Thoughts</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.secondaryButton]} onPress={handleTryAgain}>
+          <Text style={styles.secondaryButtonText}>Try Another Photo</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    resizeMode: 'contain',
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    gap: 12,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  secondaryButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+});
+
+export default PhotoPreviewScreen;
+
+================================================================================
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\PhotoResultScreen.tsx
 ================================================================================
 
 // src/screens/PhotoResultScreen.tsx
@@ -388,6 +621,8 @@ import {
   Dimensions,
   Animated,
   Platform,
+  Text,
+  Pressable,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BlurView } from '@react-native-community/blur';
@@ -396,11 +631,17 @@ import type { RootStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhotoResult'>;
 
-function PhotoResultScreen({ route }: Props): JSX.Element {
+function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
   const { photoUri, width, height } = route.params;
   const { state } = useApp();
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const thoughtsAnim = useRef(new Animated.Value(0)).current;
+
+  // Placeholder thought - this will be replaced with AI-generated content
+  const [thought] = useState(
+    "Oh, the things I could tell you about what's going on in my human's head right now... 😏"
+  );
 
   useEffect(() => {
     // Calculate image dimensions to fit screen while maintaining aspect ratio
@@ -425,15 +666,49 @@ function PhotoResultScreen({ route }: Props): JSX.Element {
       }
     }
 
-    // Start fade-in animation
+    // Start animations
     Animated.sequence([
+      // Fade in image
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: true,
       }),
+      // Reveal thoughts
+      Animated.timing(thoughtsAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
     ]).start();
-  }, [width, height, fadeAnim]);
+  }, [width, height, fadeAnim, thoughtsAnim]);
+
+  const handleTakeAnother = () => {
+    navigation.navigate('Home');
+  };
+
+  const ThoughtBubble = Platform.select({
+    ios: () => (
+      <BlurView
+        style={[styles.thoughtContainer, { opacity: thoughtsAnim }]}
+        blurType="light"
+        blurAmount={10}
+      >
+        <Text style={styles.thoughtText}>{thought}</Text>
+      </BlurView>
+    ),
+    android: () => (
+      <Animated.View
+        style={[
+          styles.thoughtContainer,
+          styles.androidBlur,
+          { opacity: thoughtsAnim }
+        ]}
+      >
+        <Text style={styles.thoughtText}>{thought}</Text>
+      </Animated.View>
+    ),
+  })!;
 
   return (
     <View style={styles.container}>
@@ -455,20 +730,15 @@ function PhotoResultScreen({ route }: Props): JSX.Element {
             },
           ]}
         />
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            style={styles.thoughtContainer}
-            blurType="light"
-            blurAmount={10}
-          >
-            {/* Placeholder for thought text */}
-          </BlurView>
-        ) : (
-          <View style={[styles.thoughtContainer, styles.androidBlur]}>
-            {/* Placeholder for thought text */}
-          </View>
-        )}
+        <ThoughtBubble />
       </Animated.View>
+
+      <Pressable 
+        style={styles.anotherButton}
+        onPress={handleTakeAnother}
+      >
+        <Text style={styles.buttonText}>Capture Another Moment</Text>
+      </Pressable>
     </View>
   );
 }
@@ -494,79 +764,197 @@ const styles = StyleSheet.create({
     minHeight: 80,
     borderRadius: 20,
     padding: 15,
+    justifyContent: 'center',
   },
   androidBlur: {
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  thoughtText: {
+    fontSize: 18,
+    color: '#000',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  anotherButton: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 
 export default PhotoResultScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\onboarding\FamilyContextScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\YourPetsWorldScreen.tsx
+================================================================================
+
+// src/screens/YourPetsWorldScreen.tsx
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
+import { useApp } from '../contexts/AppContext';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'YourPetsWorld'>;
+
+function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
+  const { state } = useApp();
+  const { user, pets } = state;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Magical Companions</Text>
+        <Text style={styles.sectionSubtitle}>
+          {pets.length === 0 
+            ? "No magical companions yet!" 
+            : `${pets.length} magical companion${pets.length > 1 ? 's' : ''}`}
+        </Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('PetManagement', {})}
+        >
+          <Text style={styles.buttonText}>
+            {pets.length === 0 ? 'Add Your First Pet' : 'Manage Companions'}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Their Human Circle</Text>
+        <Text style={styles.sectionSubtitle}>
+          {user?.familyMembers?.length 
+            ? `${user.familyMembers.length + 1} humans in the circle` 
+            : 'Just you in the circle'}
+        </Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('FamilyContext')}
+        >
+          <Text style={styles.buttonText}>Manage Circle</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  section: {
+    marginBottom: 40,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#007AFF',
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+});
+
+export default YourPetsWorldScreen;
+
+================================================================================
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\FamilyContextScreen.tsx
 ================================================================================
 
 // src/screens/onboarding/FamilyContextScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../../contexts/AppContext';
 import type { RootStackParamList } from '../../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FamilyContext'>;
 
 function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
-  const { actions } = useApp();
+  const { state, actions } = useApp();
+  const isEditing = state.user !== null;
+  
   const [familyInfo, setFamilyInfo] = useState({
     ownerName: '',
     familyMembers: '',
-    otherPets: '',
   });
 
+  useEffect(() => {
+    if (state.user) {
+      setFamilyInfo({
+        ownerName: state.user.name,
+        familyMembers: state.user.familyMembers?.join(', ') || '',
+      });
+    }
+  }, [state.user]);
 
-const handleComplete = async () => {
-  console.log('Button pressed - starting handleComplete');
-  if (!familyInfo.ownerName) {
-    console.log('No owner name provided - returning early');
-    return;
-  }
+  const handleSave = () => {
+    if (!familyInfo.ownerName) return;
 
-  try {
-    console.log('Saving user data...');
     // Save user data
     actions.setUser({
-      id: Date.now().toString(),
+      id: state.user?.id || Date.now().toString(),
       name: familyInfo.ownerName,
-      familyMembers: familyInfo.familyMembers.split(',').map(name => name.trim()).filter(Boolean),
+      familyMembers: familyInfo.familyMembers
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean),
     });
-    console.log('User data saved successfully');
 
-    // Complete onboarding via the callback
-    if (route.params?.onComplete) {
-      console.log('Calling onComplete callback...');
-      await route.params.onComplete();
-      console.log('onComplete callback finished');
+    if (isEditing) {
+      navigation.goBack();
     } else {
-      console.log('Warning: No onComplete callback found in route params');
+      // Navigate to pet management during onboarding
+      navigation.navigate('PetManagement', {});
     }
-  } catch (error) {
-    console.error('Error in handleComplete:', error);
-  }
-};
-
+  };
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: '100%' }]} />
-      </View>
+      {!isEditing && (
+        <>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '33%' }]} />
+          </View>
 
-      <Text style={styles.title}>Last step: The Family!</Text>
-      <Text style={styles.subtitle}>Help us understand who's in your pet's world</Text>
+          <Text style={styles.title}>First, Tell Us About Your Magical Circle!</Text>
+          <Text style={styles.subtitle}>
+            This helps us understand who shares in the magic of your pets' daily life
+          </Text>
+        </>
+      )}
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>What's your name?</Text>
+        <Text style={styles.label}>What shall we call you?</Text>
         <TextInput
           style={styles.input}
           value={familyInfo.ownerName}
@@ -576,8 +964,8 @@ const handleComplete = async () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Any other family members? (optional)</Text>
-        <Text style={styles.hint}>Who else does your pet interact with daily?</Text>
+        <Text style={styles.label}>Who else shares in the magic? (optional)</Text>
+        <Text style={styles.hint}>Other humans who bring joy to your pets' lives</Text>
         <TextInput
           style={styles.input}
           value={familyInfo.familyMembers}
@@ -586,29 +974,22 @@ const handleComplete = async () => {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Other pets at home? (optional)</Text>
-        <Text style={styles.hint}>Any furry siblings we should know about?</Text>
-        <TextInput
-          style={styles.input}
-          value={familyInfo.otherPets}
-          onChangeText={(text) => setFamilyInfo(prev => ({ ...prev, otherPets: text }))}
-          placeholder="e.g., Max the cat, Luna the dog"
-        />
-      </View>
-
-      <Text style={styles.disclaimer}>
-        Don't worry, you can always update this information later!
-      </Text>
+      {!isEditing && (
+        <Text style={styles.disclaimer}>
+          Next, we'll create profiles for your magical companions!
+        </Text>
+      )}
 
       <Pressable 
         style={[
           styles.button,
           !familyInfo.ownerName && styles.buttonDisabled
         ]}
-        onPress={handleComplete}
+        onPress={handleSave}
       >
-        <Text style={styles.buttonText}>Let's Start!</Text>
+        <Text style={styles.buttonText}>
+          {isEditing ? 'Save Changes' : 'Next: Add Your Pets'}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -692,87 +1073,252 @@ const styles = StyleSheet.create({
 export default FamilyContextScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\onboarding\PetBasicsScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\PetDetailsScreen.tsx
 ================================================================================
 
-// src/screens/onboarding/PetBasicsScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
+// src/screens/onboarding/PetDetailsScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../../contexts/AppContext';
 import type { RootStackParamList } from '../../types/navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PetBasics'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'PetDetails'>;
 
-function PetBasicsScreen({ navigation }: Props): JSX.Element {
-  const { actions } = useApp();
+interface PersonalityTrait {
+  id: string;
+  label: string;
+  selected: boolean;
+}
+
+const DEFAULT_TRAITS: PersonalityTrait[] = [
+  { id: '1', label: 'Loving', selected: false },
+  { id: '2', label: 'Independent', selected: false },
+  { id: '3', label: 'Playful', selected: false },
+  { id: '4', label: 'Shy', selected: false },
+  { id: '5', label: 'Energetic', selected: false },
+  { id: '6', label: 'Lazy', selected: false },
+  { id: '7', label: 'Curious', selected: false },
+  { id: '8', label: 'Mischievous', selected: false },
+];
+
+function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
+  const { state, actions } = useApp();
+  const editingPetId = route.params?.petId;
+  const editingPet = editingPetId ? state.pets.find(p => p.id === editingPetId) : null;
+
   const [petInfo, setPetInfo] = useState({
     name: '',
     type: '',
     breed: '',
+    customTraits: '',
+    quirks: '',
+    favoriteThings: '',
   });
 
-  const handleNext = () => {
-    if (!petInfo.name || !petInfo.type) return; // Basic validation
+  const [suggestedTraits, setSuggestedTraits] = useState<PersonalityTrait[]>(DEFAULT_TRAITS);
 
-    actions.addPet({
-      id: Date.now().toString(),
+  useEffect(() => {
+    if (editingPet) {
+      setPetInfo({
+        name: editingPet.name,
+        type: editingPet.type,
+        breed: editingPet.breed || '',
+        customTraits: editingPet.traits?.custom.join(', ') || '',
+        quirks: editingPet.quirks || '',
+        favoriteThings: editingPet.favoriteThings || '',
+      });
+
+      // Set selected traits
+      if (editingPet.traits?.suggested) {
+        setSuggestedTraits(DEFAULT_TRAITS.map(trait => ({
+          ...trait,
+          selected: editingPet.traits!.suggested.includes(trait.label),
+        })));
+      }
+    }
+  }, [editingPet]);
+
+  const toggleTrait = (id: string) => {
+    setSuggestedTraits(prev => prev.map(trait =>
+      trait.id === id ? { ...trait, selected: !trait.selected } : trait
+    ));
+  };
+
+  const handleSave = () => {
+    console.log('HandleSave triggered');
+    if (!petInfo.name || !petInfo.type) {
+      console.log('Missing required fields:', { name: petInfo.name, type: petInfo.type });
+      return;
+    }
+
+    const pet = {
+      id: editingPetId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: petInfo.name,
       type: petInfo.type,
-      breed: petInfo.breed,
-    });
+      breed: petInfo.breed || undefined,
+      traits: {
+        suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
+        custom: petInfo.customTraits.split(',').map(t => t.trim()).filter(Boolean),
+      },
+      quirks: petInfo.quirks || undefined,
+      favoriteThings: petInfo.favoriteThings || undefined,
+    };
 
-    navigation.navigate('PetPersonality', { petName: petInfo.name });
+    console.log('Pet object created:', pet);
+    
+    if (editingPetId) {
+      console.log('Updating existing pet');
+      actions.updatePet(pet);
+    } else {
+      console.log('Adding new pet');
+      actions.addPet(pet);
+    }
+
+    console.log('Navigating back');
+    navigation.goBack();
   };
-  
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Pet',
+      `Are you sure you want to delete ${petInfo.name}'s profile? This cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          onPress: () => {
+            actions.deletePet(editingPetId!);
+            navigation.goBack();
+          },
+          style: 'destructive'
+        }
+      ]
+    );
+  };
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: '33%' }]} />
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {editingPetId ? `Edit ${petInfo.name}'s Profile` : 'Add a New Pet'}
+        </Text>
       </View>
 
-      <Text style={styles.title}>First, who's this adorable friend?</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Basic Information</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>What's their name?</Text>
+          <TextInput
+            style={styles.input}
+            value={petInfo.name}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, name: text }))}
+            placeholder="Enter pet's name"
+          />
+        </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>What's their name?</Text>
-        <TextInput
-          style={styles.input}
-          value={petInfo.name}
-          onChangeText={(text) => setPetInfo(prev => ({ ...prev, name: text }))}
-          placeholder="Enter pet's name"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>What kind of pet are they?</Text>
+          <TextInput
+            style={styles.input}
+            value={petInfo.type}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, type: text }))}
+            placeholder="e.g., Cat, Dog, etc."
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Breed (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={petInfo.breed}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, breed: text }))}
+            placeholder="e.g., Persian, Golden Retriever"
+          />
+        </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>What kind of pet are they?</Text>
-        <TextInput
-          style={styles.input}
-          value={petInfo.type}
-          onChangeText={(text) => setPetInfo(prev => ({ ...prev, type: text }))}
-          placeholder="e.g., Cat, Dog, etc."
-        />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Personality & Preferences</Text>
+        
+        <Text style={styles.label}>Personality Traits</Text>
+        <Text style={styles.hint}>Tap any that fit:</Text>
+        <View style={styles.traitsContainer}>
+          {suggestedTraits.map(trait => (
+            <Pressable
+              key={trait.id}
+              style={[styles.traitButton, trait.selected && styles.traitSelected]}
+              onPress={() => toggleTrait(trait.id)}
+            >
+              <Text style={[styles.traitText, trait.selected && styles.traitTextSelected]}>
+                {trait.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Additional Traits</Text>
+          <Text style={styles.hint}>Add your own traits, separated by commas</Text>
+          <TextInput
+            style={styles.input}
+            value={petInfo.customTraits}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, customTraits: text }))}
+            placeholder="e.g., dramatic, food-obsessed, gentle"
+            multiline
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>What makes them unique?</Text>
+          <Text style={styles.hint}>Any quirks or special behaviors?</Text>
+          <TextInput
+            style={[styles.input, styles.multilineInput]}
+            value={petInfo.quirks}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, quirks: text }))}
+            placeholder="e.g., always sleeps in the sink, follows me to the bathroom"
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>What do they love?</Text>
+          <Text style={styles.hint}>Favorite activities, treats, or spots?</Text>
+          <TextInput
+            style={[styles.input, styles.multilineInput]}
+            value={petInfo.favoriteThings}
+            onChangeText={(text) => setPetInfo(prev => ({ ...prev, favoriteThings: text }))}
+            placeholder="e.g., chasing laser dots, belly rubs, tuna treats"
+            multiline
+            numberOfLines={3}
+          />
+        </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Breed (optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={petInfo.breed}
-          onChangeText={(text) => setPetInfo(prev => ({ ...prev, breed: text }))}
-          placeholder="e.g., Persian, Golden Retriever"
-        />
-      </View>
+      <View style={styles.buttonContainer}>
+        <Pressable 
+          style={[styles.button, (!petInfo.name || !petInfo.type) && styles.buttonDisabled]}
+          onPress={handleSave}
+        >
+          <Text style={styles.buttonText}>
+            {editingPetId ? 'Save Changes' : 'Add Pet'}
+          </Text>
+        </Pressable>
 
-      <Pressable 
-        style={[
-          styles.button,
-          (!petInfo.name || !petInfo.type) && styles.buttonDisabled
-        ]}
-        onPress={handleNext}
-      >
-        <Text style={styles.buttonText}>Next</Text>
-      </Pressable>
+        {editingPetId && (
+          <Pressable 
+            style={styles.deleteButton}
+            onPress={handleDelete}
+          >
+            <Text style={styles.deleteButtonText}>Delete Pet</Text>
+          </Pressable>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -781,32 +1327,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  header: {
     padding: 20,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 2,
-    marginBottom: 30,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
+    paddingBottom: 10,
   },
   title: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 30,
     textAlign: 'center',
+  },
+  section: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 16,
+    color: '#007AFF',
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    marginBottom: 8,
+    fontWeight: '500',
+    marginBottom: 4,
     color: '#333',
+  },
+  hint: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   input: {
     borderWidth: 1,
@@ -815,207 +1369,13 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    backgroundColor: '#A0A0A0',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});
-
-export default PetBasicsScreen;
-
-================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\onboarding\PetPersonalityScreen.tsx
-================================================================================
-
-// src/screens/onboarding/PetPersonalityScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'PetPersonality'>;
-
-interface PersonalityTrait {
-  id: string;
-  label: string;
-  selected: boolean;
-}
-
-function PetPersonalityScreen({ route, navigation }: Props): JSX.Element {
-  const { petName } = route.params;
-  const { state, actions } = useApp();
-  
-  const [suggestedTraits, setSuggestedTraits] = useState<PersonalityTrait[]>([
-    { id: '1', label: 'Loving', selected: false },
-    { id: '2', label: 'Independent', selected: false },
-    { id: '3', label: 'Playful', selected: false },
-    { id: '4', label: 'Shy', selected: false },
-    { id: '5', label: 'Energetic', selected: false },
-    { id: '6', label: 'Lazy', selected: false },
-    { id: '7', label: 'Curious', selected: false },
-    { id: '8', label: 'Mischievous', selected: false },
-  ]);
-
-  const [customTraits, setCustomTraits] = useState('');
-  const [quirks, setQuirks] = useState('');
-  const [favoriteThings, setFavoriteThings] = useState('');
-
-  const toggleTrait = (id: string) => {
-    setSuggestedTraits(prev => prev.map(trait => 
-      trait.id === id ? { ...trait, selected: !trait.selected } : trait
-    ));
-  };
-
-  const handleNext = () => {
-    // Find the current pet in our state
-    const currentPet = state.pets[state.pets.length - 1];
-    
-    // Update the pet with personality information
-    if (currentPet) {
-      const updatedPet = {
-        ...currentPet,
-        traits: {
-          suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
-          custom: customTraits.split(',').map(t => t.trim()).filter(Boolean)
-        },
-        quirks: quirks,
-        favoriteThings: favoriteThings
-      };
-
-      // Update the pet in our context
-      actions.updatePet(updatedPet);
-    }
-
-    // Just navigate without params to preserve initialParams from App.tsx
-    navigation.navigate('FamilyContext', {})
-  };
-
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: '66%' }]} />
-      </View>
-
-      <Text style={styles.title}>Tell us about {petName}!</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Personality Traits</Text>
-        <Text style={styles.sectionSubtitle}>Tap any that fit, or add your own below:</Text>
-
-        <View style={styles.traitsContainer}>
-          {suggestedTraits.map(trait => (
-            <Pressable
-              key={trait.id}
-              style={[styles.traitButton, trait.selected && styles.traitSelected]}
-              onPress={() => toggleTrait(trait.id)}
-            >
-              <Text 
-                style={[styles.traitText, trait.selected && styles.traitTextSelected]}
-              >
-                {trait.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Add more traits:</Text>
-        <TextInput
-          style={styles.input}
-          value={customTraits}
-          onChangeText={setCustomTraits}
-          placeholder="e.g., dramatic, food-obsessed, gentle"
-          multiline
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>What makes {petName} unique?</Text>
-        <Text style={styles.hint}>Any quirks or special behaviors?</Text>
-        <TextInput
-          style={styles.input}
-          value={quirks}
-          onChangeText={setQuirks}
-          placeholder="e.g., always sleeps in the sink, follows me to the bathroom"
-          multiline
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>What does {petName} love?</Text>
-        <Text style={styles.hint}>Favorite activities, treats, or spots in the house?</Text>
-        <TextInput
-          style={styles.input}
-          value={favoriteThings}
-          onChangeText={setFavoriteThings}
-          placeholder="e.g., chasing laser dots, belly rubs, tuna treats"
-          multiline
-        />
-      </View>
-
-      <Text style={styles.hint}>Don't worry about being too detailed - the more we know about {petName}, the better we can understand their thoughts!</Text>
-
-      <Pressable 
-        style={styles.button}
-        onPress={handleNext}
-      >
-        <Text style={styles.buttonText}>Next</Text>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 2,
-    marginBottom: 30,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+  multilineInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   traitsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
     gap: 8,
     marginBottom: 16,
   },
@@ -1036,33 +1396,29 @@ const styles = StyleSheet.create({
   traitTextSelected: {
     color: '#fff',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-    color: '#333',
-  },
-  hint: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 44,
-    textAlignVertical: 'top',
+  buttonContainer: {
+    padding: 20,
   },
   button: {
     backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginVertical: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#A0A0A0',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
   buttonText: {
     color: '#fff',
@@ -1071,10 +1427,287 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PetPersonalityScreen;
+export default PetDetailsScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\screens\onboarding\WelcomeScreen.tsx
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\PetManagementScreen.tsx
+================================================================================
+
+// src/screens/onboarding/PetManagementScreen.tsx
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList, Alert } from 'react-native';
+import type { Pet } from '../../contexts/AppContext';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useApp } from '../../contexts/AppContext';
+import type { RootStackParamList } from '../../types/navigation';
+import { Swipeable } from 'react-native-gesture-handler';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'PetManagement'>;
+
+function PetManagementScreen({ navigation, route }: Props): JSX.Element {
+  const { state, actions } = useApp();
+  const { pets } = state;
+  const isOnboarding = route.params?.onComplete !== undefined;
+
+  const handleAddPet = () => {
+    navigation.navigate('PetDetails', { petId: null });
+  };
+
+  const handleEditPet = (petId: string) => {
+    // Just pass the required param, don't override existing ones
+    navigation.navigate('PetDetails', { petId });
+  };
+
+  const handleComplete = async () => {
+    // Check if we have onComplete in route.params (onboarding flow)
+    if (route.params?.onComplete) {
+      try {
+        // Call the onComplete callback
+        await route.params.onComplete();
+        
+        // After onComplete callback, the App.tsx state will change
+        // and navigation will happen automatically
+        // No need to navigate manually
+      } catch (error) {
+        console.error('Error completing onboarding:', error);
+      }
+    } else {
+      // Normal flow - just go back
+      navigation.goBack();
+    }
+  };
+
+  const handleDeletePet = (petId: string, petName: string) => {
+    Alert.alert(
+      'Remove Companion',
+      `Are you sure you want to remove ${petName} from your magical circle?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          onPress: () => actions.deletePet(petId),
+          style: 'destructive'
+        }
+      ]
+    );
+  };
+
+  const renderRightActions = (petId: string, petName: string) => {
+    return (
+      <Pressable 
+        style={styles.deleteAction}
+        onPress={() => handleDeletePet(petId, petName)}
+      >
+        <Text style={styles.deleteActionText}>Remove</Text>
+      </Pressable>
+    );
+  };
+
+  const renderPetCard = ({ item: pet }: { item: Pet }) => (
+    <Swipeable
+      renderRightActions={() => renderRightActions(pet.id, pet.name)}
+      rightThreshold={40}
+    >
+      <Pressable
+        style={styles.petCard}
+        onPress={() => handleEditPet(pet.id)}
+      >
+        <View style={styles.petInfo}>
+          <Text style={styles.petName}>{pet.name}</Text>
+          <Text style={styles.petType}>
+            {pet.type}{pet.breed ? ` • ${pet.breed}` : ''}
+          </Text>
+          {pet.traits && (
+            <Text style={styles.petTraits}>
+              {[...pet.traits.suggested, ...pet.traits.custom].slice(0, 3).join(', ')}
+              {pet.traits.suggested.length + pet.traits.custom.length > 3 ? '...' : ''}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.editText}>Edit</Text>
+      </Pressable>
+    </Swipeable>
+  );
+
+  return (
+    <View style={styles.container}>
+      {isOnboarding && (
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: '66%' }]} />
+        </View>
+      )}
+
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {isOnboarding ? 'Your Magical Companions' : 'Manage Your Companions'}
+        </Text>
+        {isOnboarding && (
+          <Text style={styles.subtitle}>
+            Add profiles for all your furry friends!
+          </Text>
+        )}
+      </View>
+
+      <FlatList
+        data={pets}
+        renderItem={renderPetCard}
+        keyExtractor={pet => pet.id}
+        extraData={pets.length}
+        removeClippedSubviews={false}
+        contentContainerStyle={styles.petList}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>
+              No companions added yet. Tap the button below to add your first magical friend!
+            </Text>
+          </View>
+        }
+      />
+
+      <View style={styles.buttonContainer}>
+        <Pressable 
+          style={styles.addButton}
+          onPress={handleAddPet}
+        >
+          <Text style={styles.buttonText}>
+            {pets.length === 0 ? 'Add Your First Companion' : 'Add Another Companion'}
+          </Text>
+        </Pressable>
+
+        {(pets.length > 0 || !isOnboarding) && (
+          <Pressable 
+            style={[styles.completeButton, !isOnboarding && styles.doneButton]}
+            onPress={handleComplete}
+          >
+            <Text style={styles.buttonText}>
+              {isOnboarding ? 'Continue to App' : 'Done'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    marginBottom: 30,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 2,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  petList: {
+    flexGrow: 1,
+  },
+  petCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  petInfo: {
+    flex: 1,
+  },
+  petName: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  petType: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  petTraits: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  editText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
+  deleteActionText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 16,
+  },
+  buttonContainer: {
+    gap: 12,
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  completeButton: {
+    backgroundColor: '#34C759',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  doneButton: {
+    backgroundColor: '#007AFF',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+});
+
+export default PetManagementScreen;
+
+================================================================================
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\WelcomeScreen.tsx
 ================================================================================
 
 // src/screens/onboarding/WelcomeScreen.tsx
@@ -1091,13 +1724,16 @@ function WelcomeScreen({ navigation }: Props): JSX.Element {
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Welcome to Pet Thoughts!</Text>
         <Text style={styles.subtitle}>
-          Let's get to know your furry friend so we can understand their thoughts better!
+          Ever wondered what your pets are thinking? Let's get started and find out together!
+        </Text>
+        <Text style={styles.description}>
+          We'll start by getting to know you and your family, then learn about all your wonderful pets.
         </Text>
       </View>
       
       <Pressable 
         style={styles.button}
-        onPress={() => navigation.navigate('PetBasics')}
+        onPress={() => navigation.navigate('FamilyContext')}
       >
         <Text style={styles.buttonText}>Let's Begin!</Text>
       </Pressable>
@@ -1116,17 +1752,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
   },
   subtitle: {
     fontSize: 18,
     textAlign: 'center',
     color: '#666',
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    paddingHorizontal: 20,
   },
   button: {
     backgroundColor: '#007AFF',
@@ -1144,20 +1786,31 @@ const styles = StyleSheet.create({
 export default WelcomeScreen;
 
 ================================================================================
-File: B:\IOS Dev\pet-thoughts-app\PetThoughtsApp\src\types\navigation.ts
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\types\navigation.ts
 ================================================================================
 
 // src/types/navigation.ts
+
 export type RootStackParamList = {
+  // Onboarding Flow
   Welcome: undefined;
-  PetBasics: undefined;
-  PetPersonality: {
-    petName: string;
-  };
-  FamilyContext: {
+  FamilyContext: undefined;
+  PetManagement: {
     onComplete?: () => Promise<void>;
   };
+  PetDetails: {
+    petId: string | null;  // null when adding new pet
+  };
+
+  // Main App Flow
   Home: undefined;
+  YourPetsWorld: undefined;
+  PhotoPreview: {
+    photoUri: string;
+    base64?: string;
+    width?: number;
+    height?: number;
+  };
   PhotoResult: {
     photoUri: string;
     base64?: string;

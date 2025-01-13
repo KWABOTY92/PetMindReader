@@ -1,6 +1,6 @@
 // src/screens/onboarding/PetManagementScreen.tsx
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, FlatList, Alert } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList, Alert } from 'react-native';
 import type { Pet } from '../../contexts/AppContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../../contexts/AppContext';
@@ -12,51 +12,67 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PetManagement'>;
 function PetManagementScreen({ navigation, route }: Props): JSX.Element {
   const { state, actions } = useApp();
   const { pets } = state;
+  const isOnboarding = Boolean(route.params?.onComplete);
 
-  const handleAddPet = () => {
-    navigation.navigate('PetDetails', { petId: null });
-  };
+  const handleAddPet = useCallback(() => {
+    navigation.navigate('PetDetails', { 
+      petId: null,
+      fromOnboarding: isOnboarding 
+    });
+  }, [navigation, isOnboarding]);
 
-  const handleEditPet = (petId: string) => {
-    navigation.navigate('PetDetails', { petId });
-  };
+  const handleEditPet = useCallback((petId: string) => {
+    navigation.navigate('PetDetails', { 
+      petId,
+      fromOnboarding: isOnboarding 
+    });
+  }, [navigation, isOnboarding]);
 
-  const handleComplete = async () => {
-    if (route.params?.onComplete) {
-      await route.params.onComplete();
+  const handleComplete = useCallback(async () => {
+    if (isOnboarding && route.params?.onComplete) {
+      try {
+        await route.params.onComplete();
+        // The App.tsx component will handle the navigation after state updates
+      } catch (error) {
+        console.error('Error completing onboarding:', error);
+        Alert.alert(
+          'Error',
+          'There was a problem completing the setup. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } else {
+      navigation.goBack();
     }
-  };
+  }, [navigation, route.params, isOnboarding]);
 
-  const handleDeletePet = (petId: string, petName: string) => {
+  const handleDeletePet = useCallback((petId: string, petName: string) => {
     Alert.alert(
-      'Delete Pet',
-      `Are you sure you want to remove ${petName} from your pets?`,
+      'Remove Companion',
+      `Are you sure you want to remove ${petName} from your magical circle?`,
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Delete',
+          text: 'Remove',
           onPress: () => actions.deletePet(petId),
           style: 'destructive'
         }
       ]
     );
-  };
+  }, [actions]);
 
-  const renderRightActions = (petId: string, petName: string) => {
+  const renderRightActions = useCallback((petId: string, petName: string) => {
     return (
       <Pressable 
         style={styles.deleteAction}
         onPress={() => handleDeletePet(petId, petName)}
       >
-        <Text style={styles.deleteActionText}>Delete</Text>
+        <Text style={styles.deleteActionText}>Remove</Text>
       </Pressable>
     );
-  };
+  }, [handleDeletePet]);
 
-  const renderPetCard = ({ item: pet }: { item: Pet }) => (
+  const renderPetCard = useCallback(({ item: pet }: { item: Pet }) => (
     <Swipeable
       renderRightActions={() => renderRightActions(pet.id, pet.name)}
       rightThreshold={40}
@@ -80,19 +96,33 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         <Text style={styles.editText}>Edit</Text>
       </Pressable>
     </Swipeable>
-  );
+  ), [handleEditPet, renderRightActions]);
+
+  const EmptyState = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateText}>
+        No companions added yet. Tap the button below to add your first magical friend!
+      </Text>
+    </View>
+  ), []);
 
   return (
     <View style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: '66%' }]} />
-      </View>
+      {isOnboarding && (
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: '66%' }]} />
+        </View>
+      )}
 
       <View style={styles.header}>
-        <Text style={styles.title}>Your Pets</Text>
-        <Text style={styles.subtitle}>
-          Add profiles for all your furry friends!
+        <Text style={styles.title}>
+          {isOnboarding ? 'Your Magical Companions' : 'Manage Your Companions'}
         </Text>
+        {isOnboarding && (
+          <Text style={styles.subtitle}>
+            Add profiles for all your furry friends!
+          </Text>
+        )}
       </View>
 
       <FlatList
@@ -100,15 +130,8 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         renderItem={renderPetCard}
         keyExtractor={pet => pet.id}
         extraData={pets.length}
-        removeClippedSubviews={false}
         contentContainerStyle={styles.petList}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              No pets added yet. Tap the button below to add your first pet!
-            </Text>
-          </View>
-        }
+        ListEmptyComponent={EmptyState}
       />
 
       <View style={styles.buttonContainer}>
@@ -116,15 +139,19 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
           style={styles.addButton}
           onPress={handleAddPet}
         >
-          <Text style={styles.buttonText}>Add a Pet</Text>
+          <Text style={styles.buttonText}>
+            {pets.length === 0 ? 'Add Your First Companion' : 'Add Another Companion'}
+          </Text>
         </Pressable>
 
-        {pets.length > 0 && (
+        {(pets.length > 0 || !isOnboarding) && (
           <Pressable 
-            style={styles.completeButton}
+            style={[styles.completeButton, !isOnboarding && styles.doneButton]}
             onPress={handleComplete}
           >
-            <Text style={styles.buttonText}>Continue to App</Text>
+            <Text style={styles.buttonText}>
+              {isOnboarding ? 'Complete Setup' : 'Done'}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -233,6 +260,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  doneButton: {
+    backgroundColor: '#007AFF',
   },
   buttonText: {
     color: '#fff',

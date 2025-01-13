@@ -1,5 +1,5 @@
 // src/screens/onboarding/FamilyContextScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../../contexts/AppContext';
@@ -7,19 +7,30 @@ import type { RootStackParamList } from '../../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FamilyContext'>;
 
-function FamilyContextScreen({ navigation }: Props): JSX.Element {
-  const { actions } = useApp();
+function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
+  const { state, actions } = useApp();
+  const isEditing = state.user !== null;
+  
   const [familyInfo, setFamilyInfo] = useState({
     ownerName: '',
     familyMembers: '',
   });
 
-  const handleNext = () => {
+  useEffect(() => {
+    if (state.user) {
+      setFamilyInfo({
+        ownerName: state.user.name,
+        familyMembers: state.user.familyMembers?.join(', ') || '',
+      });
+    }
+  }, [state.user]);
+
+  const handleSave = () => {
     if (!familyInfo.ownerName) return;
 
     // Save user data
     actions.setUser({
-      id: Date.now().toString(),
+      id: state.user?.id || Date.now().toString(),
       name: familyInfo.ownerName,
       familyMembers: familyInfo.familyMembers
         .split(',')
@@ -27,23 +38,31 @@ function FamilyContextScreen({ navigation }: Props): JSX.Element {
         .filter(Boolean),
     });
 
-    // Navigate to pet management
-    navigation.navigate('PetManagement', {})
+    if (isEditing) {
+      navigation.goBack();
+    } else {
+      // Navigate to pet management during onboarding
+      navigation.navigate('PetManagement', {});
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: '33%' }]} />
-      </View>
+      {!isEditing && (
+        <>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '33%' }]} />
+          </View>
 
-      <Text style={styles.title}>First, Tell Us About Your Family!</Text>
-      <Text style={styles.subtitle}>
-        This helps us understand who's in your pets' daily life
-      </Text>
+          <Text style={styles.title}>First, Tell Us About Your Magical Circle!</Text>
+          <Text style={styles.subtitle}>
+            This helps us understand who shares in the magic of your pets' daily life
+          </Text>
+        </>
+      )}
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>What's your name?</Text>
+        <Text style={styles.label}>What shall we call you?</Text>
         <TextInput
           style={styles.input}
           value={familyInfo.ownerName}
@@ -53,8 +72,8 @@ function FamilyContextScreen({ navigation }: Props): JSX.Element {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Any other family members? (optional)</Text>
-        <Text style={styles.hint}>Who else interacts with your pets daily?</Text>
+        <Text style={styles.label}>Who else shares in the magic? (optional)</Text>
+        <Text style={styles.hint}>Other humans who bring joy to your pets' lives</Text>
         <TextInput
           style={styles.input}
           value={familyInfo.familyMembers}
@@ -63,18 +82,22 @@ function FamilyContextScreen({ navigation }: Props): JSX.Element {
         />
       </View>
 
-      <Text style={styles.disclaimer}>
-        Next, we'll set up profiles for all your pets!
-      </Text>
+      {!isEditing && (
+        <Text style={styles.disclaimer}>
+          Next, we'll create profiles for your magical companions!
+        </Text>
+      )}
 
       <Pressable 
         style={[
           styles.button,
           !familyInfo.ownerName && styles.buttonDisabled
         ]}
-        onPress={handleNext}
+        onPress={handleSave}
       >
-        <Text style={styles.buttonText}>Next: Add Your Pets</Text>
+        <Text style={styles.buttonText}>
+          {isEditing ? 'Save Changes' : 'Next: Add Your Pets'}
+        </Text>
       </Pressable>
     </ScrollView>
   );

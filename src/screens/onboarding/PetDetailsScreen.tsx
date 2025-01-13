@@ -1,5 +1,5 @@
 // src/screens/onboarding/PetDetailsScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../../contexts/AppContext';
@@ -26,8 +26,8 @@ const DEFAULT_TRAITS: PersonalityTrait[] = [
 
 function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
   const { state, actions } = useApp();
-  const editingPetId = route.params?.petId;
-  const editingPet = editingPetId ? state.pets.find(p => p.id === editingPetId) : null;
+  const { petId, fromOnboarding } = route.params;
+  const editingPet = petId ? state.pets.find(p => p.id === petId) : null;
 
   const [petInfo, setPetInfo] = useState({
     name: '',
@@ -39,6 +39,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
   });
 
   const [suggestedTraits, setSuggestedTraits] = useState<PersonalityTrait[]>(DEFAULT_TRAITS);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (editingPet) {
@@ -51,7 +52,6 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
         favoriteThings: editingPet.favoriteThings || '',
       });
 
-      // Set selected traits
       if (editingPet.traits?.suggested) {
         setSuggestedTraits(DEFAULT_TRAITS.map(trait => ({
           ...trait,
@@ -61,72 +61,91 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
     }
   }, [editingPet]);
 
-  const toggleTrait = (id: string) => {
+  const toggleTrait = useCallback((id: string) => {
     setSuggestedTraits(prev => prev.map(trait =>
       trait.id === id ? { ...trait, selected: !trait.selected } : trait
     ));
-  };
+  }, []);
 
-  const handleSave = () => {
-    console.log('HandleSave triggered');
-    if (!petInfo.name || !petInfo.type) {
-      console.log('Missing required fields:', { name: petInfo.name, type: petInfo.type });
-      return;
+  const validatePetInfo = useCallback(() => {
+    if (!petInfo.name.trim()) {
+      Alert.alert('Missing Information', 'Please enter your pet\'s name.');
+      return false;
     }
-
-    const pet = {
-      id: editingPetId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: petInfo.name,
-      type: petInfo.type,
-      breed: petInfo.breed || undefined,
-      traits: {
-        suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
-        custom: petInfo.customTraits.split(',').map(t => t.trim()).filter(Boolean),
-      },
-      quirks: petInfo.quirks || undefined,
-      favoriteThings: petInfo.favoriteThings || undefined,
-    };
-
-    console.log('Pet object created:', pet);
-    
-    if (editingPetId) {
-      console.log('Updating existing pet');
-      actions.updatePet(pet);
-    } else {
-      console.log('Adding new pet');
-      actions.addPet(pet);
+    if (!petInfo.type.trim()) {
+      Alert.alert('Missing Information', 'Please specify what kind of pet they are.');
+      return false;
     }
+    return true;
+  }, [petInfo]);
 
-    console.log('Navigating back');
-    navigation.goBack();
-  };
+  const handleSave = useCallback(async () => {
+    if (!validatePetInfo() || isSaving) return;
 
-  const handleDelete = () => {
+    try {
+      setIsSaving(true);
+
+      const pet = {
+        id: petId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: petInfo.name.trim(),
+        type: petInfo.type.trim(),
+        breed: petInfo.breed.trim() || undefined,
+        traits: {
+          suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
+          custom: petInfo.customTraits.split(',').map(t => t.trim()).filter(Boolean),
+        },
+        quirks: petInfo.quirks.trim() || undefined,
+        favoriteThings: petInfo.favoriteThings.trim() || undefined,
+      };
+      
+      if (petId) {
+        await actions.updatePet(pet);
+      } else {
+        await actions.addPet(pet);
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving pet:', error);
+      Alert.alert(
+        'Error',
+        'There was a problem saving your pet\'s information. Please try again.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [petInfo, suggestedTraits, petId, actions, navigation, validatePetInfo, isSaving]);
+
+  const handleDelete = useCallback(() => {
+    if (!petId) return;
+
     Alert.alert(
       'Delete Pet',
       `Are you sure you want to delete ${petInfo.name}'s profile? This cannot be undone.`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: () => {
-            actions.deletePet(editingPetId!);
-            navigation.goBack();
+          onPress: async () => {
+            try {
+              await actions.deletePet(petId);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error deleting pet:', error);
+              Alert.alert('Error', 'Failed to delete pet. Please try again.');
+            }
           },
           style: 'destructive'
         }
       ]
     );
-  };
+  }, [petId, petInfo.name, actions, navigation]);
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>
-          {editingPetId ? `Edit ${petInfo.name}'s Profile` : 'Add a New Pet'}
+          {editingPet ? `Edit ${petInfo.name}'s Profile` : 'Add a New Pet'}
         </Text>
       </View>
 
@@ -140,6 +159,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.name}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, name: text }))}
             placeholder="Enter pet's name"
+            editable={!isSaving}
           />
         </View>
 
@@ -150,6 +170,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.type}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, type: text }))}
             placeholder="e.g., Cat, Dog, etc."
+            editable={!isSaving}
           />
         </View>
 
@@ -160,6 +181,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.breed}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, breed: text }))}
             placeholder="e.g., Persian, Golden Retriever"
+            editable={!isSaving}
           />
         </View>
       </View>
@@ -173,10 +195,19 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
           {suggestedTraits.map(trait => (
             <Pressable
               key={trait.id}
-              style={[styles.traitButton, trait.selected && styles.traitSelected]}
+              style={[
+                styles.traitButton, 
+                trait.selected && styles.traitSelected,
+                isSaving && styles.disabled
+              ]}
               onPress={() => toggleTrait(trait.id)}
+              disabled={isSaving}
             >
-              <Text style={[styles.traitText, trait.selected && styles.traitTextSelected]}>
+              <Text style={[
+                styles.traitText, 
+                trait.selected && styles.traitTextSelected,
+                isSaving && styles.disabledText
+              ]}>
                 {trait.label}
               </Text>
             </Pressable>
@@ -192,6 +223,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, customTraits: text }))}
             placeholder="e.g., dramatic, food-obsessed, gentle"
             multiline
+            editable={!isSaving}
           />
         </View>
 
@@ -205,6 +237,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             placeholder="e.g., always sleeps in the sink, follows me to the bathroom"
             multiline
             numberOfLines={3}
+            editable={!isSaving}
           />
         </View>
 
@@ -218,24 +251,30 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             placeholder="e.g., chasing laser dots, belly rubs, tuna treats"
             multiline
             numberOfLines={3}
+            editable={!isSaving}
           />
         </View>
       </View>
 
       <View style={styles.buttonContainer}>
         <Pressable 
-          style={[styles.button, (!petInfo.name || !petInfo.type) && styles.buttonDisabled]}
+          style={[
+            styles.button,
+            (!petInfo.name || !petInfo.type || isSaving) && styles.buttonDisabled
+          ]}
           onPress={handleSave}
+          disabled={isSaving}
         >
           <Text style={styles.buttonText}>
-            {editingPetId ? 'Save Changes' : 'Add Pet'}
+            {isSaving ? 'Saving...' : (editingPet ? 'Save Changes' : 'Add Pet')}
           </Text>
         </Pressable>
 
-        {editingPetId && (
+        {editingPet && (
           <Pressable 
-            style={styles.deleteButton}
+            style={[styles.deleteButton, isSaving && styles.buttonDisabled]}
             onPress={handleDelete}
+            disabled={isSaving}
           >
             <Text style={styles.deleteButtonText}>Delete Pet</Text>
           </Pressable>
@@ -290,6 +329,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    backgroundColor: '#fff',
   },
   multilineInput: {
     minHeight: 80,
@@ -346,6 +386,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    opacity: 0.5,
   },
 });
 
