@@ -36,15 +36,25 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
     });
   }, [navigation, isSetup]);
 
+  
+
   const handleComplete = useCallback(async () => {
     if (isSetup) {
-      // Mark setup as complete and navigate to Home
-      await AsyncStorage.setItem('@setup_complete', 'true');
-      navigation.navigate('Home');
+      try {
+        // Store BEFORE navigation
+        await AsyncStorage.setItem('@setup_complete', 'true');
+        // Wait a moment to ensure storage is complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        navigation.navigate('Home');
+      } catch (error) {
+        console.error('Error completing setup:', error);
+      }
     } else {
       navigation.goBack();
     }
   }, [navigation, isSetup]);
+
+
 
   const handleDeletePet = useCallback((petId: string, petName: string) => {
     Alert.alert(
