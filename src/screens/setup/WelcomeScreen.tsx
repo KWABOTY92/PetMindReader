@@ -1,12 +1,15 @@
-// src/screens/onboarding/WelcomeScreen.tsx
+// src/screens/setup/WelcomeScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../types/navigation';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'Welcome'>;
 
-function WelcomeScreen({ navigation }: Props): JSX.Element {
+function WelcomeScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>

@@ -1,13 +1,15 @@
 // src/screens/YourPetsWorldScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../contexts/AppContext';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'YourPetsWorld'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'YourPetsWorld'>;
 
-function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
+function YourPetsWorldScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
   const { state } = useApp();
   const { user, pets } = state;
 
@@ -22,7 +24,7 @@ function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
         </Text>
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate('PetManagement', {})}
+          onPress={() => navigation.navigate('PetManagement', { fromSetup: false })}
         >
           <Text style={styles.buttonText}>
             {pets.length === 0 ? 'Add Your First Pet' : 'Manage Companions'}
@@ -47,6 +49,8 @@ function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
     </View>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

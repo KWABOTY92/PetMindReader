@@ -1,15 +1,17 @@
 // src/screens/HomeScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../navigation/MainStack';
 import { useApp } from '../contexts/AppContext';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import type { RootStackParamList } from '../types/navigation';
 import { Camera, Image as ImageIcon } from 'lucide-react-native';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'Home'>;
 
-function HomeScreen({navigation}: Props): JSX.Element {
+function HomeScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
   const { actions } = useApp();
 
   const handleImageSelection = async (type: 'camera' | 'gallery') => {
@@ -30,7 +32,6 @@ function HomeScreen({navigation}: Props): JSX.Element {
         
         actions.setCurrentPhoto(photo);
         
-        // Navigate to PhotoPreview screen
         navigation.navigate('PhotoPreview', {
           photoUri: photo.uri,
           base64: photo.base64,
@@ -42,6 +43,7 @@ function HomeScreen({navigation}: Props): JSX.Element {
       console.error('Error selecting photo:', error);
     }
   };
+
 
   return (
     <View style={styles.container}>

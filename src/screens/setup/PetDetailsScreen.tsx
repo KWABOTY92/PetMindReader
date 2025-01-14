@@ -1,19 +1,16 @@
-// src/screens/onboarding/PetDetailsScreen.tsx
+// src/screens/setup/PetDetailsScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
+import type { MainStackParamList } from '../../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PetDetails'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PetDetails'>;
+type RouteProps = RouteProp<MainStackParamList, 'PetDetails'>;
 
-interface PersonalityTrait {
-  id: string;
-  label: string;
-  selected: boolean;
-}
-
-const DEFAULT_TRAITS: PersonalityTrait[] = [
+const DEFAULT_TRAITS = [
   { id: '1', label: 'Loving', selected: false },
   { id: '2', label: 'Independent', selected: false },
   { id: '3', label: 'Playful', selected: false },
@@ -24,11 +21,13 @@ const DEFAULT_TRAITS: PersonalityTrait[] = [
   { id: '8', label: 'Mischievous', selected: false },
 ];
 
-function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
+function PetDetailsScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { state, actions } = useApp();
-  const { petId, fromOnboarding } = route.params;
-  const editingPet = petId ? state.pets.find(p => p.id === petId) : null;
-
+  const params = route.params;
+  const editingPet = params.petId ? state.pets.find(p => p.id === params.petId) : null;
+  
   const [petInfo, setPetInfo] = useState({
     name: '',
     type: '',
@@ -38,7 +37,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
     favoriteThings: '',
   });
 
-  const [suggestedTraits, setSuggestedTraits] = useState<PersonalityTrait[]>(DEFAULT_TRAITS);
+  const [suggestedTraits, setSuggestedTraits] = useState(DEFAULT_TRAITS);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -86,7 +85,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
       setIsSaving(true);
 
       const pet = {
-        id: petId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: params.petId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: petInfo.name.trim(),
         type: petInfo.type.trim(),
         breed: petInfo.breed.trim() || undefined,
@@ -98,7 +97,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
         favoriteThings: petInfo.favoriteThings.trim() || undefined,
       };
       
-      if (petId) {
+      if (params.petId) {
         await actions.updatePet(pet);
       } else {
         await actions.addPet(pet);
@@ -114,10 +113,10 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
     } finally {
       setIsSaving(false);
     }
-  }, [petInfo, suggestedTraits, petId, actions, navigation, validatePetInfo, isSaving]);
+  }, [petInfo, suggestedTraits, params.petId, actions, navigation]);
 
   const handleDelete = useCallback(() => {
-    if (!petId) return;
+    if (!params.petId) return;
 
     Alert.alert(
       'Delete Pet',
@@ -128,7 +127,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
           text: 'Delete',
           onPress: async () => {
             try {
-              await actions.deletePet(petId);
+              await actions.deletePet(params.petId!);
               navigation.goBack();
             } catch (error) {
               console.error('Error deleting pet:', error);
@@ -139,7 +138,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
         }
       ]
     );
-  }, [petId, petInfo.name, actions, navigation]);
+  }, [params.petId, petInfo.name, actions, navigation]);
 
   return (
     <ScrollView style={styles.container}>

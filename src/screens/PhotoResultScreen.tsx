@@ -10,27 +10,32 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { BlurView } from '@react-native-community/blur';
 import { useApp } from '../contexts/AppContext';
-import type { RootStackParamList } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { MainStackParamList } from '../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PhotoResult'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PhotoResult'>;
+type RouteProps = RouteProp<MainStackParamList, 'PhotoResult'>;
 
-function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
+function PhotoResultScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { photoUri, width, height } = route.params;
   const { state } = useApp();
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const thoughtsAnim = useRef(new Animated.Value(0)).current;
 
-  // Placeholder thought - this will be replaced with AI-generated content
+  // Placeholder thought remains the same
   const [thought] = useState(
     "Oh, the things I could tell you about what's going on in my human's head right now... 😏"
   );
 
   useEffect(() => {
-    // Calculate image dimensions to fit screen while maintaining aspect ratio
+    // Layout calculation stays the same
     if (width && height) {
       const screenWidth = Dimensions.get('window').width;
       const screenHeight = Dimensions.get('window').height;
@@ -52,15 +57,13 @@ function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
       }
     }
 
-    // Start animations
+    // Animations stay the same
     Animated.sequence([
-      // Fade in image
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: true,
       }),
-      // Reveal thoughts
       Animated.timing(thoughtsAnim, {
         toValue: 1,
         duration: 800,
@@ -73,6 +76,7 @@ function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
     navigation.navigate('Home');
   };
 
+  // Platform-specific ThoughtBubble component remains the same
   const ThoughtBubble = Platform.select({
     ios: () => (
       <BlurView
@@ -128,6 +132,8 @@ function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
     </View>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

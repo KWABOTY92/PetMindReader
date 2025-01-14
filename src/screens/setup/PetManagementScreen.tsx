@@ -1,50 +1,50 @@
-// src/screens/onboarding/PetManagementScreen.tsx
+// src/screens/setup/PetManagementScreen.tsx
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList, Alert } from 'react-native';
-import type { Pet } from '../../contexts/AppContext';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useApp } from '../../contexts/AppContext';
+import type { MainStackParamList } from '../../navigation/MainStack';
+import type { Pet } from '../../contexts/AppContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PetManagement'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PetManagement'>;
+type RouteProps = RouteProp<MainStackParamList, 'PetManagement'>;
+
+interface Props {
+  navigation: NavigationProp;
+  route: RouteProps;
+}
 
 function PetManagementScreen({ navigation, route }: Props): JSX.Element {
   const { state, actions } = useApp();
   const { pets } = state;
-  const isOnboarding = Boolean(route.params?.onComplete);
+  const isSetup = route.params?.fromSetup;
 
   const handleAddPet = useCallback(() => {
     navigation.navigate('PetDetails', { 
       petId: null,
-      fromOnboarding: isOnboarding 
+      fromSetup: isSetup 
     });
-  }, [navigation, isOnboarding]);
+  }, [navigation, isSetup]);
 
   const handleEditPet = useCallback((petId: string) => {
     navigation.navigate('PetDetails', { 
       petId,
-      fromOnboarding: isOnboarding 
+      fromSetup: isSetup 
     });
-  }, [navigation, isOnboarding]);
+  }, [navigation, isSetup]);
 
   const handleComplete = useCallback(async () => {
-    if (isOnboarding && route.params?.onComplete) {
-      try {
-        await route.params.onComplete();
-        // The App.tsx component will handle the navigation after state updates
-      } catch (error) {
-        console.error('Error completing onboarding:', error);
-        Alert.alert(
-          'Error',
-          'There was a problem completing the setup. Please try again.',
-          [{ text: 'OK' }]
-        );
-      }
+    if (isSetup) {
+      // Mark setup as complete and navigate to Home
+      await AsyncStorage.setItem('@setup_complete', 'true');
+      navigation.navigate('Home');
     } else {
       navigation.goBack();
     }
-  }, [navigation, route.params, isOnboarding]);
+  }, [navigation, isSetup]);
 
   const handleDeletePet = useCallback((petId: string, petName: string) => {
     Alert.alert(
@@ -108,7 +108,7 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
 
   return (
     <View style={styles.container}>
-      {isOnboarding && (
+      {isSetup && (
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '66%' }]} />
         </View>
@@ -116,9 +116,9 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
 
       <View style={styles.header}>
         <Text style={styles.title}>
-          {isOnboarding ? 'Your Magical Companions' : 'Manage Your Companions'}
+          {isSetup ? 'Your Magical Companions' : 'Manage Your Companions'}
         </Text>
-        {isOnboarding && (
+        {isSetup && (
           <Text style={styles.subtitle}>
             Add profiles for all your furry friends!
           </Text>
@@ -144,13 +144,13 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
           </Text>
         </Pressable>
 
-        {(pets.length > 0 || !isOnboarding) && (
+        {(pets.length > 0 || !isSetup) && (
           <Pressable 
-            style={[styles.completeButton, !isOnboarding && styles.doneButton]}
+            style={[styles.completeButton, !isSetup && styles.doneButton]}
             onPress={handleComplete}
           >
             <Text style={styles.buttonText}>
-              {isOnboarding ? 'Complete Setup' : 'Done'}
+              {isSetup ? 'Complete Setup' : 'Done'}
             </Text>
           </Pressable>
         )}

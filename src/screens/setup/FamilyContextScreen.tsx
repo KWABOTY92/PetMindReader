@@ -1,15 +1,21 @@
-// src/screens/onboarding/FamilyContextScreen.tsx
+// src/screens/setup/FamilyContextScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
+import type { MainStackParamList } from '../../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'FamilyContext'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'FamilyContext'>;
+type RouteProps = RouteProp<MainStackParamList, 'FamilyContext'>;
 
-function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
+function FamilyContextScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { state, actions } = useApp();
-  const isEditing = state.user !== null;
+  // Check if we came from Welcome screen (initial setup)
+  const isInitialSetup = !state.user;
   
   const [familyInfo, setFamilyInfo] = useState({
     ownerName: '',
@@ -28,7 +34,6 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
   const handleSave = () => {
     if (!familyInfo.ownerName) return;
 
-    // Save user data
     actions.setUser({
       id: state.user?.id || Date.now().toString(),
       name: familyInfo.ownerName,
@@ -38,17 +43,16 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         .filter(Boolean),
     });
 
-    if (isEditing) {
-      navigation.goBack();
+    if (isInitialSetup) {
+      navigation.navigate('PetManagement', { fromSetup: true });
     } else {
-      // Navigate to pet management during onboarding
-      navigation.navigate('PetManagement', {});
+      navigation.goBack();
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {!isEditing && (
+      {isInitialSetup && (
         <>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '33%' }]} />
@@ -82,7 +86,7 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         />
       </View>
 
-      {!isEditing && (
+      {isInitialSetup && (
         <Text style={styles.disclaimer}>
           Next, we'll create profiles for your magical companions!
         </Text>
@@ -96,12 +100,14 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         onPress={handleSave}
       >
         <Text style={styles.buttonText}>
-          {isEditing ? 'Save Changes' : 'Next: Add Your Pets'}
+          {isInitialSetup ? 'Next: Add Your Pets' : 'Save Changes'}
         </Text>
       </Pressable>
     </ScrollView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

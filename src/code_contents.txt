@@ -344,21 +344,197 @@ export function useApp(): AppContextType {
 }
 
 ================================================================================
+File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\navigation\index.tsx
+================================================================================
+
+// src/navigation/index.tsx
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Screens
+import HomeScreen from '../screens/HomeScreen';
+import PhotoPreviewScreen from '../screens/PhotoPreviewScreen';
+import PhotoResultScreen from '../screens/PhotoResultScreen';
+import YourPetsWorldScreen from '../screens/YourPetsWorldScreen';
+import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
+import FamilyContextScreen from '../screens/onboarding/FamilyContextScreen';
+import PetManagementScreen from '../screens/onboarding/PetManagementScreen';
+import PetDetailsScreen from '../screens/onboarding/PetDetailsScreen';
+
+// Types
+export type MainStackParamList = {
+  Home: undefined;
+  YourPetsWorld: undefined;
+  PhotoPreview: {
+    photoUri: string;
+    base64?: string;
+    width?: number;
+    height?: number;
+  };
+  PhotoResult: {
+    photoUri: string;
+    base64?: string;
+    width?: number;
+    height?: number;
+  };
+  PetManagement: {
+    fromOnboarding?: boolean;  // Add this line
+  } | undefined;  // Make it optional
+  PetDetails: {
+    petId: string | null;
+    fromOnboarding?: boolean;
+  };
+  FamilyContext: undefined;
+};
+
+export type OnboardingStackParamList = {
+  Welcome: undefined;
+  FamilyContext: undefined;
+  PetManagement: {
+    fromOnboarding?: boolean;  // Add this line
+  } | undefined;  // Make it optional
+  PetDetails: {
+    petId: string | null;
+    fromOnboarding?: boolean;
+  };
+};
+
+const MainStack = createNativeStackNavigator<MainStackParamList>();
+const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
+
+// Separate navigator for main app flow
+function MainNavigator() {
+  return (
+    <MainStack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerBackTitle: 'Back',
+      }}
+    >
+      <MainStack.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <MainStack.Screen 
+        name="YourPetsWorld" 
+        component={YourPetsWorldScreen}
+        options={{ headerTitle: "Your Pet's World" }}
+      />
+      <MainStack.Screen 
+        name="PetManagement" 
+        component={PetManagementScreen}
+        options={{ headerTitle: 'Magical Companions' }}
+      />
+      <MainStack.Screen 
+        name="FamilyContext" 
+        component={FamilyContextScreen}
+        options={{ headerTitle: 'Their Human Circle' }}
+      />
+      <MainStack.Screen 
+        name="PetDetails" 
+        component={PetDetailsScreen}
+        options={({ route }) => ({
+          headerTitle: route.params?.petId ? 'Edit Companion' : 'Add Companion',
+        })}
+      />
+      <MainStack.Screen 
+        name="PhotoPreview" 
+        component={PhotoPreviewScreen}
+        options={{
+          headerTitle: '',
+          headerTransparent: true,
+          headerTintColor: '#fff',
+        }}
+      />
+      <MainStack.Screen 
+        name="PhotoResult" 
+        component={PhotoResultScreen}
+        options={{
+          headerTitle: '',
+          headerTransparent: true,
+          headerTintColor: '#fff',
+        }}
+      />
+    </MainStack.Navigator>
+  );
+}
+
+// Separate navigator for onboarding flow
+function OnboardingNavigator() {
+  return (
+    <OnboardingStack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerBackTitle: 'Back',
+      }}
+    >
+      <OnboardingStack.Screen 
+        name="Welcome" 
+        component={WelcomeScreen}
+        options={{ headerShown: false }}
+      />
+      <OnboardingStack.Screen 
+        name="FamilyContext" 
+        component={FamilyContextScreen}
+        options={{ headerTitle: 'Your Magical Circle' }}
+      />
+      <OnboardingStack.Screen 
+        name="PetManagement" 
+        component={PetManagementScreen}
+        options={{ headerTitle: 'Your Magical Companions' }}
+      />
+      <OnboardingStack.Screen 
+        name="PetDetails" 
+        component={PetDetailsScreen}
+        options={({ route }) => ({
+          headerTitle: route.params?.petId ? 'Edit Companion' : 'Add Companion',
+        })}
+      />
+    </OnboardingStack.Navigator>
+  );
+}
+
+// Root navigator that switches between onboarding and main app
+const RootStack = createNativeStackNavigator();
+
+type RootNavigatorProps = {
+  isOnboarding: boolean;
+};
+
+export function RootNavigator({ isOnboarding }: RootNavigatorProps) {
+  return (
+    <NavigationContainer>
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {isOnboarding ? (
+          <RootStack.Screen name="OnboardingFlow" component={OnboardingNavigator} />
+        ) : (
+          <RootStack.Screen name="MainFlow" component={MainNavigator} />
+        )}
+      </RootStack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+================================================================================
 File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\HomeScreen.tsx
 ================================================================================
 
 // src/screens/HomeScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../navigation';
 import { useApp } from '../contexts/AppContext';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import type { RootStackParamList } from '../types/navigation';
 import { Camera, Image as ImageIcon } from 'lucide-react-native';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'Home'>;
 
-function HomeScreen({navigation}: Props): JSX.Element {
+function HomeScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
   const { actions } = useApp();
 
   const handleImageSelection = async (type: 'camera' | 'gallery') => {
@@ -500,14 +676,16 @@ import {
   Pressable,
   Text,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useApp } from '../contexts/AppContext';
-import type { RootStackParamList } from '../types/navigation';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { MainStackParamList } from '../navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PhotoPreview'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PhotoPreview'>;
 
-function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
-  const { photoUri, width, height } = route.params;
+function PhotoPreviewScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute();
+  const { photoUri, width, height, base64 } = route.params as MainStackParamList['PhotoPreview'];
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -535,7 +713,12 @@ function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
   }, [width, height]);
 
   const handleRevealThoughts = () => {
-    navigation.navigate('PhotoResult', route.params);
+    navigation.navigate('PhotoResult', {
+      photoUri,
+      base64,
+      width,
+      height,
+    });
   };
 
   const handleTryAgain = () => {
@@ -624,15 +807,18 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { BlurView } from '@react-native-community/blur';
 import { useApp } from '../contexts/AppContext';
-import type { RootStackParamList } from '../types/navigation';
+import type { MainStackParamList } from '../navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PhotoResult'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PhotoResult'>;
 
-function PhotoResultScreen({ route, navigation }: Props): JSX.Element {
-  const { photoUri, width, height } = route.params;
+function PhotoResultScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute();
+  const { photoUri, width, height } = route.params as MainStackParamList['PhotoResult'];
   const { state } = useApp();
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -801,13 +987,15 @@ File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\YourPetsWorldScreen
 // src/screens/YourPetsWorldScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types/navigation';
+import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../contexts/AppContext';
+import type { MainStackParamList } from '../navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'YourPetsWorld'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'YourPetsWorld'>;
 
-function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
+function YourPetsWorldScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
   const { state } = useApp();
   const { user, pets } = state;
 
@@ -822,7 +1010,7 @@ function YourPetsWorldScreen({ navigation }: Props): JSX.Element {
         </Text>
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate('PetManagement', {})}
+          onPress={() => navigation.navigate('PetManagement')}
         >
           <Text style={styles.buttonText}>
             {pets.length === 0 ? 'Add Your First Pet' : 'Manage Companions'}
@@ -893,15 +1081,21 @@ File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\FamilyCo
 // src/screens/onboarding/FamilyContextScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
+import { MainStackParamList, OnboardingStackParamList } from '../../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'FamilyContext'>;
+type CombinedParamList = MainStackParamList & OnboardingStackParamList;
 
-function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
+type NavigationProp = NativeStackNavigationProp<CombinedParamList, 'FamilyContext'>;
+type RouteProps = RouteProp<CombinedParamList, 'FamilyContext'>;
+
+function FamilyContextScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { state, actions } = useApp();
-  const isEditing = state.user !== null;
+  const isOnboarding = route.name === 'FamilyContext' && !state.user;
   
   const [familyInfo, setFamilyInfo] = useState({
     ownerName: '',
@@ -930,17 +1124,16 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         .filter(Boolean),
     });
 
-    if (isEditing) {
-      navigation.goBack();
+    if (isOnboarding) {
+      navigation.navigate('PetManagement', { fromOnboarding: true });
     } else {
-      // Navigate to pet management during onboarding
-      navigation.navigate('PetManagement', {});
+      navigation.goBack();
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {!isEditing && (
+      {isOnboarding && (
         <>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '33%' }]} />
@@ -974,7 +1167,7 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         />
       </View>
 
-      {!isEditing && (
+      {isOnboarding && (
         <Text style={styles.disclaimer}>
           Next, we'll create profiles for your magical companions!
         </Text>
@@ -988,7 +1181,7 @@ function FamilyContextScreen({ navigation, route }: Props): JSX.Element {
         onPress={handleSave}
       >
         <Text style={styles.buttonText}>
-          {isEditing ? 'Save Changes' : 'Next: Add Your Pets'}
+          {isOnboarding ? 'Next: Add Your Pets' : 'Save Changes'}
         </Text>
       </Pressable>
     </ScrollView>
@@ -1077,13 +1270,10 @@ File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\PetDetai
 ================================================================================
 
 // src/screens/onboarding/PetDetailsScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'PetDetails'>;
 
 interface PersonalityTrait {
   id: string;
@@ -1102,11 +1292,13 @@ const DEFAULT_TRAITS: PersonalityTrait[] = [
   { id: '8', label: 'Mischievous', selected: false },
 ];
 
-function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
+function PetDetailsScreen(): JSX.Element {
+  const navigation = useNavigation();
+  const route = useRoute();
   const { state, actions } = useApp();
-  const editingPetId = route.params?.petId;
-  const editingPet = editingPetId ? state.pets.find(p => p.id === editingPetId) : null;
-
+  const params = route.params as { petId: string | null; fromOnboarding?: boolean };
+  const editingPet = params.petId ? state.pets.find(p => p.id === params.petId) : null;
+  
   const [petInfo, setPetInfo] = useState({
     name: '',
     type: '',
@@ -1117,6 +1309,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
   });
 
   const [suggestedTraits, setSuggestedTraits] = useState<PersonalityTrait[]>(DEFAULT_TRAITS);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (editingPet) {
@@ -1129,7 +1322,6 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
         favoriteThings: editingPet.favoriteThings || '',
       });
 
-      // Set selected traits
       if (editingPet.traits?.suggested) {
         setSuggestedTraits(DEFAULT_TRAITS.map(trait => ({
           ...trait,
@@ -1139,72 +1331,91 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
     }
   }, [editingPet]);
 
-  const toggleTrait = (id: string) => {
+  const toggleTrait = useCallback((id: string) => {
     setSuggestedTraits(prev => prev.map(trait =>
       trait.id === id ? { ...trait, selected: !trait.selected } : trait
     ));
-  };
+  }, []);
 
-  const handleSave = () => {
-    console.log('HandleSave triggered');
-    if (!petInfo.name || !petInfo.type) {
-      console.log('Missing required fields:', { name: petInfo.name, type: petInfo.type });
-      return;
+  const validatePetInfo = useCallback(() => {
+    if (!petInfo.name.trim()) {
+      Alert.alert('Missing Information', 'Please enter your pet\'s name.');
+      return false;
     }
-
-    const pet = {
-      id: editingPetId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: petInfo.name,
-      type: petInfo.type,
-      breed: petInfo.breed || undefined,
-      traits: {
-        suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
-        custom: petInfo.customTraits.split(',').map(t => t.trim()).filter(Boolean),
-      },
-      quirks: petInfo.quirks || undefined,
-      favoriteThings: petInfo.favoriteThings || undefined,
-    };
-
-    console.log('Pet object created:', pet);
-    
-    if (editingPetId) {
-      console.log('Updating existing pet');
-      actions.updatePet(pet);
-    } else {
-      console.log('Adding new pet');
-      actions.addPet(pet);
+    if (!petInfo.type.trim()) {
+      Alert.alert('Missing Information', 'Please specify what kind of pet they are.');
+      return false;
     }
+    return true;
+  }, [petInfo]);
 
-    console.log('Navigating back');
-    navigation.goBack();
-  };
+  const handleSave = useCallback(async () => {
+    if (!validatePetInfo() || isSaving) return;
 
-  const handleDelete = () => {
+    try {
+      setIsSaving(true);
+
+      const pet = {
+        id: params.petId || `pet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: petInfo.name.trim(),
+        type: petInfo.type.trim(),
+        breed: petInfo.breed.trim() || undefined,
+        traits: {
+          suggested: suggestedTraits.filter(t => t.selected).map(t => t.label),
+          custom: petInfo.customTraits.split(',').map(t => t.trim()).filter(Boolean),
+        },
+        quirks: petInfo.quirks.trim() || undefined,
+        favoriteThings: petInfo.favoriteThings.trim() || undefined,
+      };
+      
+      if (params.petId) {
+        await actions.updatePet(pet);
+      } else {
+        await actions.addPet(pet);
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving pet:', error);
+      Alert.alert(
+        'Error',
+        'There was a problem saving your pet\'s information. Please try again.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [petInfo, suggestedTraits, params.petId, actions, navigation, validatePetInfo, isSaving]);
+
+  const handleDelete = useCallback(() => {
+    if (!params.petId) return;
+
     Alert.alert(
       'Delete Pet',
       `Are you sure you want to delete ${petInfo.name}'s profile? This cannot be undone.`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: () => {
-            actions.deletePet(editingPetId!);
-            navigation.goBack();
+          onPress: async () => {
+            try {
+              await actions.deletePet(params.petId!);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error deleting pet:', error);
+              Alert.alert('Error', 'Failed to delete pet. Please try again.');
+            }
           },
           style: 'destructive'
         }
       ]
     );
-  };
+  }, [params.petId, petInfo.name, actions, navigation]);
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>
-          {editingPetId ? `Edit ${petInfo.name}'s Profile` : 'Add a New Pet'}
+          {editingPet ? `Edit ${petInfo.name}'s Profile` : 'Add a New Pet'}
         </Text>
       </View>
 
@@ -1218,6 +1429,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.name}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, name: text }))}
             placeholder="Enter pet's name"
+            editable={!isSaving}
           />
         </View>
 
@@ -1228,6 +1440,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.type}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, type: text }))}
             placeholder="e.g., Cat, Dog, etc."
+            editable={!isSaving}
           />
         </View>
 
@@ -1238,6 +1451,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             value={petInfo.breed}
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, breed: text }))}
             placeholder="e.g., Persian, Golden Retriever"
+            editable={!isSaving}
           />
         </View>
       </View>
@@ -1251,10 +1465,19 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
           {suggestedTraits.map(trait => (
             <Pressable
               key={trait.id}
-              style={[styles.traitButton, trait.selected && styles.traitSelected]}
+              style={[
+                styles.traitButton, 
+                trait.selected && styles.traitSelected,
+                isSaving && styles.disabled
+              ]}
               onPress={() => toggleTrait(trait.id)}
+              disabled={isSaving}
             >
-              <Text style={[styles.traitText, trait.selected && styles.traitTextSelected]}>
+              <Text style={[
+                styles.traitText, 
+                trait.selected && styles.traitTextSelected,
+                isSaving && styles.disabledText
+              ]}>
                 {trait.label}
               </Text>
             </Pressable>
@@ -1270,6 +1493,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             onChangeText={(text) => setPetInfo(prev => ({ ...prev, customTraits: text }))}
             placeholder="e.g., dramatic, food-obsessed, gentle"
             multiline
+            editable={!isSaving}
           />
         </View>
 
@@ -1283,6 +1507,7 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             placeholder="e.g., always sleeps in the sink, follows me to the bathroom"
             multiline
             numberOfLines={3}
+            editable={!isSaving}
           />
         </View>
 
@@ -1296,24 +1521,30 @@ function PetDetailsScreen({ navigation, route }: Props): JSX.Element {
             placeholder="e.g., chasing laser dots, belly rubs, tuna treats"
             multiline
             numberOfLines={3}
+            editable={!isSaving}
           />
         </View>
       </View>
 
       <View style={styles.buttonContainer}>
         <Pressable 
-          style={[styles.button, (!petInfo.name || !petInfo.type) && styles.buttonDisabled]}
+          style={[
+            styles.button,
+            (!petInfo.name || !petInfo.type || isSaving) && styles.buttonDisabled
+          ]}
           onPress={handleSave}
+          disabled={isSaving}
         >
           <Text style={styles.buttonText}>
-            {editingPetId ? 'Save Changes' : 'Add Pet'}
+            {isSaving ? 'Saving...' : (editingPet ? 'Save Changes' : 'Add Pet')}
           </Text>
         </Pressable>
 
-        {editingPetId && (
+        {editingPet && (
           <Pressable 
-            style={styles.deleteButton}
+            style={[styles.deleteButton, isSaving && styles.buttonDisabled]}
             onPress={handleDelete}
+            disabled={isSaving}
           >
             <Text style={styles.deleteButtonText}>Delete Pet</Text>
           </Pressable>
@@ -1368,6 +1599,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    backgroundColor: '#fff',
   },
   multilineInput: {
     minHeight: 80,
@@ -1425,6 +1657,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  disabled: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    opacity: 0.5,
+  },
 });
 
 export default PetDetailsScreen;
@@ -1434,58 +1672,62 @@ File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\PetManag
 ================================================================================
 
 // src/screens/onboarding/PetManagementScreen.tsx
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList, Alert } from 'react-native';
-import type { Pet } from '../../contexts/AppContext';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useApp } from '../../contexts/AppContext';
-import type { RootStackParamList } from '../../types/navigation';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useApp } from '../../contexts/AppContext';
+import { MainStackParamList, OnboardingStackParamList } from '../../navigation';
+import type { Pet } from '../../contexts/AppContext';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PetManagement'>;
+type CombinedParamList = MainStackParamList & OnboardingStackParamList;
+
+type NavigationProp = NativeStackNavigationProp<CombinedParamList, 'PetManagement'>;
+type RouteProps = RouteProp<CombinedParamList, 'PetManagement'>;
+
+interface Props {
+  navigation: NavigationProp;
+  route: RouteProps;
+}
 
 function PetManagementScreen({ navigation, route }: Props): JSX.Element {
   const { state, actions } = useApp();
   const { pets } = state;
-  const isOnboarding = route.params?.onComplete !== undefined;
+  const isOnboarding = Boolean(route.params?.fromOnboarding);
 
-  const handleAddPet = () => {
-    navigation.navigate('PetDetails', { petId: null });
-  };
+  const handleAddPet = useCallback(() => {
+    navigation.navigate('PetDetails', { 
+      petId: null,
+      fromOnboarding: isOnboarding 
+    });
+  }, [navigation, isOnboarding]);
 
-  const handleEditPet = (petId: string) => {
-    // Just pass the required param, don't override existing ones
-    navigation.navigate('PetDetails', { petId });
-  };
+  const handleEditPet = useCallback((petId: string) => {
+    navigation.navigate('PetDetails', { 
+      petId,
+      fromOnboarding: isOnboarding 
+    });
+  }, [navigation, isOnboarding]);
 
-  const handleComplete = async () => {
-    // Check if we have onComplete in route.params (onboarding flow)
-    if (route.params?.onComplete) {
-      try {
-        // Call the onComplete callback
-        await route.params.onComplete();
-        
-        // After onComplete callback, the App.tsx state will change
-        // and navigation will happen automatically
-        // No need to navigate manually
-      } catch (error) {
-        console.error('Error completing onboarding:', error);
-      }
+  const handleComplete = useCallback(() => {
+    if (isOnboarding) {
+      // When in onboarding, navigate to Home screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     } else {
-      // Normal flow - just go back
       navigation.goBack();
     }
-  };
+  }, [navigation, isOnboarding]);
 
-  const handleDeletePet = (petId: string, petName: string) => {
+  const handleDeletePet = useCallback((petId: string, petName: string) => {
     Alert.alert(
       'Remove Companion',
       `Are you sure you want to remove ${petName} from your magical circle?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           onPress: () => actions.deletePet(petId),
@@ -1493,9 +1735,9 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         }
       ]
     );
-  };
+  }, [actions]);
 
-  const renderRightActions = (petId: string, petName: string) => {
+  const renderRightActions = useCallback((petId: string, petName: string) => {
     return (
       <Pressable 
         style={styles.deleteAction}
@@ -1504,9 +1746,9 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         <Text style={styles.deleteActionText}>Remove</Text>
       </Pressable>
     );
-  };
+  }, [handleDeletePet]);
 
-  const renderPetCard = ({ item: pet }: { item: Pet }) => (
+  const renderPetCard = useCallback(({ item: pet }: { item: Pet }) => (
     <Swipeable
       renderRightActions={() => renderRightActions(pet.id, pet.name)}
       rightThreshold={40}
@@ -1530,7 +1772,15 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         <Text style={styles.editText}>Edit</Text>
       </Pressable>
     </Swipeable>
-  );
+  ), [handleEditPet, renderRightActions]);
+
+  const EmptyState = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateText}>
+        No companions added yet. Tap the button below to add your first magical friend!
+      </Text>
+    </View>
+  ), []);
 
   return (
     <View style={styles.container}>
@@ -1556,15 +1806,8 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
         renderItem={renderPetCard}
         keyExtractor={pet => pet.id}
         extraData={pets.length}
-        removeClippedSubviews={false}
         contentContainerStyle={styles.petList}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              No companions added yet. Tap the button below to add your first magical friend!
-            </Text>
-          </View>
-        }
+        ListEmptyComponent={EmptyState}
       />
 
       <View style={styles.buttonContainer}>
@@ -1583,7 +1826,7 @@ function PetManagementScreen({ navigation, route }: Props): JSX.Element {
             onPress={handleComplete}
           >
             <Text style={styles.buttonText}>
-              {isOnboarding ? 'Continue to App' : 'Done'}
+              {isOnboarding ? 'Complete Setup' : 'Done'}
             </Text>
           </Pressable>
         )}
@@ -1713,12 +1956,15 @@ File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\screens\onboarding\WelcomeS
 // src/screens/onboarding/WelcomeScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../types/navigation';
+import { useNavigation } from '@react-navigation/native';
+import type { OnboardingStackParamList } from '../../navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
+type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>;
 
-function WelcomeScreen({ navigation }: Props): JSX.Element {
+function WelcomeScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -1784,37 +2030,3 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeScreen;
-
-================================================================================
-File: C:\Users\admloc\Desktop\KWAB\PetMindReader\src\types\navigation.ts
-================================================================================
-
-// src/types/navigation.ts
-
-export type RootStackParamList = {
-  // Onboarding Flow
-  Welcome: undefined;
-  FamilyContext: undefined;
-  PetManagement: {
-    onComplete?: () => Promise<void>;
-  };
-  PetDetails: {
-    petId: string | null;  // null when adding new pet
-  };
-
-  // Main App Flow
-  Home: undefined;
-  YourPetsWorld: undefined;
-  PhotoPreview: {
-    photoUri: string;
-    base64?: string;
-    width?: number;
-    height?: number;
-  };
-  PhotoResult: {
-    photoUri: string;
-    base64?: string;
-    width?: number;
-    height?: number;
-  };
-};

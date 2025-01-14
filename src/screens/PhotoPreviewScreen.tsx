@@ -8,14 +8,18 @@ import {
   Pressable,
   Text,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useApp } from '../contexts/AppContext';
-import type { RootStackParamList } from '../types/navigation';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { MainStackParamList } from '../navigation/MainStack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PhotoPreview'>;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, 'PhotoPreview'>;
+type RouteProps = RouteProp<MainStackParamList, 'PhotoPreview'>;
 
-function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
-  const { photoUri, width, height } = route.params;
+function PhotoPreviewScreen(): JSX.Element {
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
+  const { photoUri, width, height, base64 } = route.params;
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -42,14 +46,6 @@ function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
     }
   }, [width, height]);
 
-  const handleRevealThoughts = () => {
-    navigation.navigate('PhotoResult', route.params);
-  };
-
-  const handleTryAgain = () => {
-    navigation.goBack();
-  };
-
   return (
     <View style={styles.container}>
       <Image
@@ -63,10 +59,23 @@ function PhotoPreviewScreen({ route, navigation }: Props): JSX.Element {
         ]}
       />
       <View style={styles.buttonContainer}>
-        <Pressable style={styles.button} onPress={handleRevealThoughts}>
+        <Pressable 
+          style={styles.button} 
+          onPress={() => 
+            navigation.navigate('PhotoResult', {
+              photoUri,
+              base64,
+              width,
+              height,
+            })
+          }
+        >
           <Text style={styles.buttonText}>Reveal Thoughts</Text>
         </Pressable>
-        <Pressable style={[styles.button, styles.secondaryButton]} onPress={handleTryAgain}>
+        <Pressable 
+          style={[styles.button, styles.secondaryButton]} 
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.secondaryButtonText}>Try Another Photo</Text>
         </Pressable>
       </View>
