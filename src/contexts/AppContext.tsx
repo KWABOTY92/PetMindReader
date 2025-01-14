@@ -22,6 +22,10 @@ interface User {
   familyMembers?: string[];
 }
 
+interface ass {
+  id: string
+}
+
 interface Photo {
   uri: string;
   base64?: string;
